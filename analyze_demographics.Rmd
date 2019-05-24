@@ -1,0 +1,811 @@
+---
+title: "Information about the participants in the cartogram experiment"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Demographics
+
+## Age distribution
+
+```{r include=FALSE}
+library(readr)  # Needed for read_csv().
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(magrittr)  # Needed for pipes %>%.
+library(tibble)  # Needed for add_column(). # Need to install
+library(plyr) # Needed for data analysis
+library(tidyr) # Needed for merging data frame columns # Need to install
+
+csv <- read_csv("Cartogram 5 Group Questionnaire_February 23, 2019_00.39.csv",
+                col_types = cols())
+
+# Create an excerpt from the csv, called "survey", that contains only the
+# relevant rows and columns.
+relevant_column_name <- c("participant_id",
+                          paste0("Q", c(130:134, 144, 146, 137:142)))
+relevant_row <- c(13:16, 19:31, 33:nrow(csv))
+survey <- csv[relevant_row, relevant_column_name]
+names(survey) <- c("participant_id",
+                   "age",
+                   "gender",
+                   "education",
+                   "familiar_with_interactive_graphics",
+                   "familiar_with_cartogram",
+                   "find_birthplace",
+                   "look_up_on_map",
+                   paste0("colour_vision_", seq_len(6)))
+
+
+na_to_numericNA <- function(v) {
+  na_if(v, "na") %>%
+    as.numeric()
+}
+turn_familiarity_into_ordered <- function(v) {
+  ordered(v,
+          levels = familiar_likert,
+          labels = substring(familiar_likert, 3))
+}
+familiar_likert <- c("1: Very unfamiliar",
+                     "2: Unfamiliar",
+                     "3: Somewhat familiar",
+                     "4: Familiar",
+                     "5: Very familiar")
+birthplace_likert <- c("1: Yes, with confidence.",
+                       "2: Yes, with a little effort.",
+                       "3: Yes, with much effort.",
+                       "4: Possibly, but I'm uncertain.",
+                       "5: No.")
+lookup_likert <- c("1: Never",
+                   "2: Rarely",
+                   "3: Sometimes",
+                   "4: Generally",
+                   "5: Always")
+survey <- 
+  mutate_at(survey,
+            .vars = vars(participant_id,
+                         age,
+                         paste0("colour_vision_", seq_len(6))),
+            .funs = funs(na_to_numericNA)) %>%
+  mutate(education = ordered(education,
+                             levels = c("High School graduate",
+                                        "Some college",
+                                        "Associate's and/or Bachelor's degree",
+                                        "Bachelor's degree",
+                                        "Master's degree"),
+                             labels = c("High school",
+                                        "Some college",
+                                        rep("Bachelor's", 2),
+                                        "Master's"))) %>%
+  mutate_at(.vars = vars(familiar_with_interactive_graphics,
+                         familiar_with_cartogram),
+            .funs = funs(turn_familiarity_into_ordered)) %>%
+  mutate(find_birthplace = 
+           ordered(find_birthplace,
+                   levels = birthplace_likert,
+                   labels = substr(birthplace_likert,
+                                   3,
+                                   nchar(birthplace_likert) - 1))) %>%
+  mutate(look_up_on_map = ordered(look_up_on_map,
+                                  levels = lookup_likert,
+                                  labels = substring(lookup_likert, 3)))
+dt_table <- function(x) {
+  dt <- data.frame(table(survey[[x]], useNA = "ifany"))
+}
+show_as_table <- function(dt) {
+  kable(dt, booktabs = TRUE) %>%
+    kable_styling(latex_options = c("striped"))
+}
+```
+
+```{r echo=FALSE, fig.width=4, fig.height=3, fig.align='center'}
+ggplot(survey, aes(age)) +
+  geom_histogram(breaks = seq(16, 52, by = 2),
+                 fill = "lightgreen",
+                 col = "black")
+```
+
+## Gender
+
+```{r echo=FALSE}
+dt_gender <- dt_table("gender")
+names(dt_gender) <- c("Gender", "Frequency")
+show_as_table(dt_gender)
+```
+
+## Highest level of education
+
+```{r echo=FALSE}
+dt_education <- dt_table("education")
+names(dt_education) <- c("Education", "Frequency")
+show_as_table(dt_education)
+```
+
+# Information about prior knowledge
+
+## Familiarity with interactive computer graphics
+
+```{r echo=FALSE}
+dt_interactive <- dt_table("familiar_with_interactive_graphics")
+names(dt_interactive) <- c("Familiarity", "Frequency")
+show_as_table(dt_interactive)
+```
+
+## Familiarity with cartograms
+
+```{r echo=FALSE}
+dt_cartogram <- dt_table("familiar_with_cartogram")
+names(dt_cartogram) <- c("Familiarity", "Frequency")
+levels(dt_cartogram$Familiarity) <-
+  c(levels(dt_cartogram$Familiarity), "No response")
+dt_cartogram$Familiarity[is.na(dt_cartogram$Familiarity)] <- "No response"
+show_as_table(dt_cartogram)
+```
+
+## Map affinity
+
+On a world map, would you be able to point at the location where you were
+born?
+
+```{r echo=FALSE}
+dt_birthplace <- dt_table("find_birthplace")
+names(dt_birthplace) <- c("Answer", "Frequency")
+show_as_table(dt_birthplace)
+```
+
+When you encounter the names of unfamiliar locations (e.g. countries, islands,
+lakes), how frequently do you immediately look them up on a map to find out
+where they are?
+
+```{r echo=FALSE}
+dt_lookup <- dt_table("look_up_on_map")
+names(dt_lookup) <- c("Answer", "Frequency")
+show_as_table(dt_lookup)
+```
+
+# Colour vision
+
+We showed six Ishihara plates to each participant.
+Participants 28, 37, 42, 50 responded differently from the majority in exactly
+one case each.
+Participant 2 had two, participant 34 even three abnormal responses.
+We should investigate whether participants 2 and 34 showed unusual responses
+to the remaining questions too.
+
+# Questions 
+
+## Taxon (Task Taxonomy According to Nusrat & Kobourov 2015)
+
+* CL - cluster: find the region that has the most similar data to a given region.
+
+Sample Question: On the other monitor, you can see a conventional map of Brazil (left) and a cattle population cartogram (right). Out of the states listed below, which has a cattle population most similar to Mato Grosso do Sul (MS)? A. Rondonia (RO), B. Para (PA), C. Mato Grosso (MT), D. San Paulo (SP)
+
+* CO - compare: compare data between two regions.
+
+Sample Question: On the other monitor, you can see a conventional map of Germany (left) and a GDP cartogram (right). Is the GDP of Mecklenburg-Vorpommern (MV) higher than, approximately equal to or lower than the GDP of Rheinland-Pfalz (RP)? A. Higher, B. Approximately equal, C. Lower
+
+* DC - detect change: compare areas of a given region in two cartograms.
+
+Sample Question: On the other monitor, you can see a conventional map of Brazil (left), a cattle population cartogram and a human population (right). You may have to use the cartogram selector tab to view both cartograms. Is the area of Amazonas (AM) in the cattle population cartogram higher than, approximately equal to or lower than its area in the human population cartogram? A. Higher, B. Approximately equal, C. Lower
+
+* FA - find adjacency: find all neighbours of a given region.
+
+Sample Question: On the other monitor, you can see a conventional map of Brazil (left) and a population cartogram (right). Which states are neighbours of the state highlighted in red in the population cartogram below? There may be more than one correct answer. A. Bahia (BA), B. Minals Gerals (MG), C. Maranhao (MA), D. Sergipe (SE)
+
+* FL - filter: find all regions whose data surpasses that of a given region.
+
+Sample Question: On the other monitor, you can see a conventional map of Germany (left) and a population cartogram (right). Out of the states listed below, which one(s) have a population higher than Baden-Wuerttemberg (BW)? There may be more than one correct answer. A. Nordrhein-Westfalen (NW), B. Hessen (HE), C. Niedersachen (NI), D. Bayern (BY).
+
+* FT - find top: find the region that has the highest data across the country.
+
+Sample Question: On the other monitor, you can see a conventional map of the USA (left) and a crop production cartogram (right). Which state of the USA has the highest crop production? A. California (CA), B. Montana (MT), C. Maine (ME), D. Iowa (IA).
+
+* RE - recognize: identify the name of a given region highlighted in the cartogram.
+
+Sample Question: On the other monitor, you can see a conventional map of the India (left) and a population cartogram (right). Which is the name of the state highlighted in the population cartogram? A. Haryana (HR), B. Punjab (PB), C. Rajasthan (RJ), D. Himachal Pradesh (HP). 
+
+* SU - summarize: compare data of three different regions in two cartograms.
+
+Sample Question: On the other monitor, you can see a conventional map of Germany (left) and population cartograms for the years 1985 and 2015 (right). You may have to use the cartogram selector tab to view both cartograms. Three different regions are highlighted in yellow, purple and pink. What can you say about the change in population for each region from 1985 to 2015? For all three regions, A. Growth, B. Approximately No Change, C. Shrinking.
+
+## Treatment Groups
+A - all (i.e. highlighting, infotip and switch button),
+
+H - highlighting,
+
+I - infotip,
+
+N - none,
+
+S - switch button.
+
+## Correctness
+A question is considered to be answered correctly if and only if all correct answers and no incorrect answers are selected. A question is considered to be answered incorrectly otherwise. There is no partial credit given for any question.
+
+
+# Results
+```{r include=FALSE}
+csv <- read_csv("Cartogram 5 Group Questionnaire_February 23, 2019_00.39.csv",
+                col_types = cols())
+task <- 
+  tibble(qualtrics_id = c(1, 2, 4, 5, 7, 8, 10, 14,
+                          12, 13, 16, 17, 19, 22, 21, 23,
+                          25, 26, 29, 30, 32, 33, 35, 36,
+                          37, 39, 42, 43, 45, 46, 48, 49,
+                          51, 52, 54, 55, 57, 58, 60, 61,
+                          63, 64, 66, 67, 69, 70, 72, 73,
+                          75, 76, 78, 79, 81, 82, 84, 85,
+                          87, 88, 90, 96, 92, 93, 95, 97,
+                          99, 100, 102, 103, 105, 106, 108, 109,
+                          111, 112, 114, 115, 117, 122, 119, 121),
+         number = rep(seq_len(40), each = 2),
+         timed = rep(c(FALSE, TRUE), 40),
+         country = rep(c("BR", "DE", "BR", "IN", "DE", "CN", "DE", "CN",
+                         "US", "IN", "BR", "US", "CN", "US", "CN", "DE",
+                         "BR", "CN", "BR", "DE", "IN", "US", "IN", "US",
+                         "IN", "CN", "BR", "US", "DE", "IN", "US", "DE",
+                         "IN", "BR", "CN", "US", "DE", "CN", "IN", "BR"),
+                       each = 2),
+         taxon = rep(c("CL", "CO", "DC", "RE", "SU", "DC", "FL", "CO",
+                       "CL", "FL", "FA", "FT", "CL", "CO", "FT", "FA",
+                       "CO", "SU", "RE", "FT", "CL", "SU", "FA", "RE",
+                       "SU", "RE", "FT", "DC", "CL", "CO", "FL", "DC",
+                       "FT", "SU", "FL", "FA", "RE", "FA", "DC", "FL"),
+                     each = 2),
+         help_group0 = rep(c("A", "I", "N", "I", "I", "A", "A", "N",
+                             "H", "H", "N", "A", "S", "S", "H", "H",
+                             "H", "N", "A", "S", "I", "S", "S", "H",
+                             "A", "S", "I", "I", "N", "A", "N", "H",
+                             "N", "H", "I", "I", "N", "A", "S", "S"),
+                           each = 2))
+correct <- list(Q1  = "Mato Grosso (MT)",
+                Q2  = "Lower",
+                Q3  = "Lower",
+                Q4  = "Haryana (HR)",
+                Q5  = "Shrinking,Growth,Growth",
+                Q6  = "Lower",
+                Q7  = "Nordrhein-Westfalen (NW),Bayern (BY)",
+                Q8  = "Lower", # Lower rather than Higher
+                Q9  = "Illinois (IL)",
+                Q10 = "Uttar Pradesh (UP)",
+                Q11 = "Bahia (BA),Minas Gerais (MG)",
+                Q12 = "California (CA)",
+                Q13 = "Ningxia (NX)",
+                Q14 = "Approximately equal amount",
+                Q15 = "Guangdong (GD)",
+                Q16 = "Bayern (BY),Hessen (HE)",
+                Q17 = "Higher",
+                Q18 = "Growth,Growth,Shrinking",
+                Q19 = "Espirito Santo (ES)",
+                Q20 = "Nordrhein-Westfalen (NW)",
+                Q21 = "Tamil Nadu (TN)",
+                Q22 = "Shrinking,Shrinking,Growth",
+                Q23 = "Uttar Pradesh (UP)", # A previous typo
+                Q24 = "Ohio (OH)",
+                Q25 = "Growth,Growth,Shrinking", # or "Approximately No Change,Growth,Shrinking"
+                Q26 = "Jiangxi (JX)",
+                Q27 = "Mato Grosso (MG)",
+                Q28 = "Lower",
+                Q29 = "Rheinland-Pfalz (RP)",
+                Q30 = "Lower", # A previous typo
+                Q31 = "California (CA),Texas (TX)",
+                Q32 = "Higher",
+                Q33 = "Maharashtra (MH)",
+                Q34 = "Growth,Growth,Shrinking", # or "Approximately No Change,Growth,Shrinking"
+                Q35 = "Jiangsu (JS),Shandong (SD)", # A previous typo
+                Q36 = "New Jersey (NJ),New York (NY)",
+                Q37 = "Thueringen (TH)",
+                Q38 = "Guangdong (GD)",
+                Q39 = "Lower",
+                Q40 = "Mato Grosso do Sul (MS),Para (PA),Sao Paulo (SP)")
+
+# Create an excerpt from the csv, called "survey", that contains only the
+# relevant rows and columns.
+get_relevant_col_name <- function(row) {
+  
+  # Generates the relevant column names (e.g. "Q8_Last Click", "Q12_2").
+  # Arg:
+  #   row: integer, row in data frame "task".
+  # Returns:
+  #   Character vector with relevant column names.
+  rcn <- paste0("Q", task$qualtrics_id[row])
+  if (task$timed[row]) {
+    return(paste0(rcn, "_Last Click"))
+  }
+  if (task$taxon[row] == "SU") {
+    return(paste0(rcn, "_", seq_len(3)))
+  }
+  rcn
+}
+relevant_row <- c(13:16, 19:31, 33:nrow(csv))
+relevant_column_name <- 
+  c("participant_id", lapply(seq_len(nrow(task)), get_relevant_col_name)) %>%
+  unlist()
+survey <- csv[relevant_row, relevant_column_name]
+names(survey) <- gsub("_Last Click", "_last_click", names(survey))
+
+# Assess level of colour vision.
+col_vis_column_name <- paste0("Q", 137:142)
+col_vis_tibble <- csv[relevant_row, col_vis_column_name]
+get_majority_answer <- function(answer_table) {
+  names(answer_table[which.max(answer_table)]) %>%
+    as.numeric()
+}
+majority_answer <- lapply(col_vis_tibble, table) %>%
+  sapply(get_majority_answer)
+is_majority_answer <- function(i) {
+  !is.na(col_vis_tibble[i]) & col_vis_tibble[i] == majority_answer[i]
+}
+colour_vision <- sapply(seq_along(col_vis_tibble), is_majority_answer) %>%
+  rowSums()
+survey <- add_column(survey, colour_vision, .after = 1)
+rm(col_vis_column_name,  # These variables are no longer needed.
+   col_vis_tibble,
+   colour_vision,
+   majority_answer,
+   relevant_row,
+   relevant_column_name)
+
+# Change the numbers appearing in the column names from Qualtrics ID to
+# the task number.
+number_in_survey <- gsub("^Q", "", names(survey))
+number_in_survey <- gsub("_.*$", "", number_in_survey)
+number_in_survey <- ifelse(grepl("^[0-9]", number_in_survey),
+                           number_in_survey,
+                           NA)
+number_in_survey <- as.numeric(number_in_survey)
+change_qualtrics_id_to_task_number <- function(i) {
+  n <- number_in_survey[i]
+  
+  # Use which.max() to guarantee that the return value has length <= 1.
+  task_nr <- task$number[which.max(task$qualtrics_id == n)]
+  if (!is.na(n)) {
+    gsub(n, task_nr, names(survey)[i])
+  } else {
+    names(survey)[i]
+  }
+}
+names(survey) <- sapply(seq_along(survey),
+                        change_qualtrics_id_to_task_number)
+rm(number_in_survey)  # No longer needed.
+
+# Add column with group information.
+survey$participant_id <- as.numeric(survey$participant_id)
+survey <- add_column(survey,
+                     group = (survey$participant_id - 1) %% 5,
+                     .after = 1)
+
+# Add columns with the task taxonomy.
+add_taxon <- function(task_nr) {
+  after_column <- which.max(grepl(paste0("Q", task_nr, "_last_click"),
+                                  names(survey)))
+  task_index <- which.max(task$number == task_nr)
+  tax <- task$taxon[task_index]
+  help0 <- task$help_group0[task_index]
+  help2num <- c(A = 0, N = 1, H = 2, I = 3, S = 4)
+  help <- (help2num[help0] + survey$group) %% 5
+  help <- names(help2num)[help + 1]
+  survey <<- add_column(survey, tax, help, .after = after_column)
+  col_name <- paste0("Q", task_nr, c("_taxon", "_help"))
+  names(survey)[after_column + seq_len(2)] <<- col_name
+}
+sapply(unique(task$number), add_taxon)
+
+
+# Merge Questions with Multiple Responses
+survey = unite(survey, "Q5", c("Q5_1", "Q5_2", "Q5_3"), remove = FALSE, sep = ",")
+survey = unite(survey, "Q18", c("Q18_1", "Q18_2", "Q18_3"), remove = FALSE, sep = ",")
+survey = unite(survey, "Q22", c("Q22_1", "Q22_2", "Q22_3"), remove = FALSE, sep = ",")
+survey = unite(survey, "Q25", c("Q25_1", "Q25_2", "Q25_3"), remove = FALSE, sep = ",")
+survey = unite(survey, "Q34", c("Q34_1", "Q34_2", "Q34_3"), remove = FALSE, sep = ",")
+
+names <- c("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", 
+          "Q11", "Q12", "Q13", "Q14", "Q15", "Q16", "Q17", "Q18", "Q19", "Q20", 
+          "Q21", "Q22", "Q23", "Q24", "Q25", "Q26", "Q27", "Q28", "Q29", "Q30",
+          "Q31", "Q32", "Q33", "Q34", "Q35", "Q36", "Q37", "Q38", "Q39", "Q40")
+
+counts <- data.frame(matrix(nrow = 5, ncol = 40))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+colnames(counts) <- names
+rownames(counts) <- treatment
+
+for (i in 0:4) {
+  s_treatment <- survey[survey$group == i,]
+  for (n in names) {
+    k <- sum(s_treatment[[n]] == correct[n])
+    if (n == "Q25" || n == "Q34") {
+      k <- k + sum(s_treatment[[n]] == "Approximately No Change,Growth,Shrinking")
+    }
+    h = paste(n, "_help", sep = "")
+    counts[unique(s_treatment[[h]]), n] = k
+  }
+}
+
+# counts = counts / 11 # transform counts to accuracy
+accuracy = round(rowSums(counts) / 40 / 11, digits = 2)
+counts$accuracy = accuracy
+
+response <- data.frame(matrix(nrow = 2200, ncol = 6))
+colnames(response) <- c("question", "participant_id", "taxon", 
+                        "treatment", "is_correct", "response_time")
+response$participant_id = rep(1:55, 40)
+response$question = rep(1:40, each = 55)
+response$taxon = rep(c("CL", "CO", "DC", "RE", "SU", "DC", "FL", "CO",
+              "CL", "FL", "FA", "FT", "CL", "CO", "FT", "FA",
+              "CO", "SU", "RE", "FT", "CL", "SU", "FA", "RE",
+              "SU", "RE", "FT", "DC", "CL", "CO", "FL", "DC",
+              "FT", "SU", "FL", "FA", "RE", "FA", "DC", "FL"), each = 55)
+helps = c()
+for (i in 1:40) {
+  helps = c(helps, unlist(survey[paste0("Q", i, "_help")], use.names = FALSE))
+}
+response$treatment = helps
+answers = c()
+for (i in 1:40) {
+  answer = unlist(survey[paste0("Q", i)], use.names = FALSE)
+  for (j in 1:55) {
+    if (answer[j] == correct[i]) {
+      answers = c(answers, TRUE)
+    } else {
+      if ((i == 25 || i == 34) && answer[j] == "Approximately No Change,Growth,Shrinking") {
+        answers = c(answers, TRUE)
+      } else {
+      answers = c(answers, FALSE)
+      }
+    }
+  }
+}
+response$is_correct = answers
+times = c()
+for (i in 1:40) {
+  times = c(times, unlist(survey[paste0("Q", i, "_last_click")], use.names = FALSE))
+}
+response$response_time = times
+```
+
+## Histograms of the number of Incorrect Answers
+```{r include=FALSE}
+correctness <- data.frame(matrix(rep(0, 40), nrow = 5, ncol = 8))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+taxonomy <- rep(c("CL", "CO", "DC", "RE", "SU", "FA", "FL", "FT"))
+colnames(correctness) <- taxonomy
+rownames(correctness) <- treatment
+taxon = rep(c("CL", "CO", "DC", "RE", "SU", "DC", "FL", "CO",
+              "CL", "FL", "FA", "FT", "CL", "CO", "FT", "FA",
+              "CO", "SU", "RE", "FT", "CL", "SU", "FA", "RE",
+              "SU", "RE", "FT", "DC", "CL", "CO", "FL", "DC",
+              "FT", "SU", "FL", "FA", "RE", "FA", "DC", "FL"))
+
+for (j in 1:40) {
+  t = taxon[j]
+  for (i in 1:5) {
+    correctness[i, t] =  correctness[i, t] + counts[i, j]
+  }
+}
+
+for (j in 1:8) {
+  for (i in 1:5) {
+    correctness[i, j] =  55 - correctness[i, j]
+  }
+}
+```
+
+### CL
+```{r echo=FALSE}
+barplot(correctness$CL, names.arg = treatment, main = "Cluster (CL)", col="darkblue", xlab = "Treatment", ylab = "Number of Inorrect Answers")
+```
+
+6 out of the 15 participants (one data point missing) who are provided with switch actually used switch.
+
+### CO
+```{r echo=FALSE}
+barplot(correctness$CO, names.arg = treatment, main = "Compare (CO)", col="darkblue", xlab = "Treatment", ylab = "Number of Inorrect Answers")
+```
+
+no significant effects
+
+### DC
+```{r echo=FALSE}
+barplot(correctness$DC, names.arg = treatment, main = "Detect Change (DC)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+no significant effects
+
+### RE
+```{r echo=FALSE}
+barplot(correctness$RE, names.arg = treatment, main = "Recognize (RE)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+no significant effects
+
+### SU
+```{r echo=FALSE}
+barplot(correctness$SU, names.arg = treatment, main = "Summarize (SU)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+18 out of 18 participants who are provided with switch actually used switch.
+
+### FA
+```{r echo=FALSE}
+barplot(correctness$FA, names.arg = treatment, main = "Find Adjacency (FA)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+no significant effects
+
+### FL
+```{r echo=FALSE}
+barplot(correctness$FL, names.arg = treatment, main = "Filter (FL)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+no significant effects
+
+### FT
+```{r echo=FALSE}
+barplot(correctness$FT, names.arg = treatment, main = "Find Top (FT)", col="darkblue", xlab = "Treatment", ylab = "Number of Incorrect Answers")
+```
+
+no significant effects
+
+## Boxplots of Response Time Conditioned on Correctness
+
+### CL
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(1,9,13,21,29)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Cluster (CL)")
+```
+
+nothing significant
+
+### CO
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(2,8,14,17,30)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Compare (CO)")
+```
+
+H does not help answer correctly, but the correct answer is quicker.
+
+### DC
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(3,6,28,32,39)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Detect Change (DC)")
+```
+
+most participants use switch several times back and forth before choosing their answers
+
+### FA
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(11,16,23,36,38)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Find Adjacency (FA)")
+```
+
+nothing significant
+
+### FL
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(7,10,31,35,40)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Filter (FL)")
+```
+
+nothing significant
+
+### FT
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(12,15,20,27,33)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Find Top (FT)")
+```
+
+nothing significant
+
+### RE
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(4,19,24,26,37)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Recognize (RE)")
+```
+
+nothing significant
+
+### SU
+```{r echo=FALSE}
+box_time <- data.frame(matrix(rep(NA, 275), nrow = 5, ncol = 55))
+treatment <- rep(c("N", "H", "I", "S", "A"))
+qn  <- c(1:55)
+colnames(box_time) <- qn
+rownames(box_time) <- treatment
+for (i in c(5,18,22,25,34)){
+  cqn = paste0("Q", i)
+  my_ans = survey[cqn]
+  my_time = survey[paste0(cqn, "_last_click")]
+  my_help = survey[paste0(cqn, "_help")]
+  for (j in 1:55){
+    if (my_ans[j,] == correct[i]){
+      box_time[unlist(my_help[j,]), j] = my_time[j,]
+    }
+    if (j == 25 || j == 34) {
+      if (my_ans[j, ] == "Approximately No Change,Growth,Shrinking") {
+        box_time[unlist(my_help[j,]), j] = my_time[j,]
+      }
+    }
+  }
+}
+
+boxplot(as.numeric(box_time["N",]), as.numeric(box_time["H",]),
+        as.numeric(box_time["I",]), as.numeric(box_time["S",]),
+        as.numeric(box_time["A",]), names = treatment,
+        ylab = "Response Time (s)", main = "Summarize (SU)")
+```
+
+the spread is significantly higher for I because of two outliers (>100s).
+
+# Experiments
+
+## Pairwise Prop Test
+```{r include=TRUE}
+
+taxonomy <- rep(c("CL", "CO", "DC", "RE", "SU", "FA", "FL", "FT"))
+
+for (i in 1:8) {
+  print(taxonomy[i])
+  ppt_matrix = response %>% select(treatment, taxon, is_correct)
+  ppt_matrix_incorrect = filter(ppt_matrix, taxon == taxonomy[i], is_correct == FALSE)
+  ppt_matrix_incorrect = select(ppt_matrix_incorrect, treatment)
+  print(pairwise.prop.test(
+   c(nrow(filter(ppt_matrix_incorrect, treatment == "N")),
+     nrow(filter(ppt_matrix_incorrect, treatment == "H")),
+     nrow(filter(ppt_matrix_incorrect, treatment == "I")),
+     nrow(filter(ppt_matrix_incorrect, treatment == "S")),
+     nrow(filter(ppt_matrix_incorrect, treatment == "A"))),
+  rep(55, 5)))
+}
+```
+
+## ANOVA
+```{r include=TRUE}
+
+taxonomy <- rep(c("CL", "CO", "DC", "RE", "SU", "FA", "FL", "FT"))
+
+for (i in 1:8) {
+  print(taxonomy[i])
+  anova_matrix = response %>% select(response_time, treatment, taxon, is_correct)
+  anova_matrix_correct = filter(anova_matrix, taxon == taxonomy[i], is_correct == TRUE)
+  anova_matrix_correct = select(anova_matrix_correct, response_time, treatment)
+  print(summary(aov(response_time ~ treatment, anova_matrix_correct)))
+}
+```
